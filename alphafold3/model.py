@@ -230,14 +230,26 @@ class Attention(nn.Module):
 class AxialAttention(nn.Module):
     def __init__(
         self,
-        dim,
-        heads,
-        row_attn=True,
-        col_attn=True,
-        accept_edges=False,
-        global_query_attn=False,
+        dim: int,
+        heads: int,
+        row_attn: bool = True,
+        col_attn: bool = True,
+        accept_edges: bool = False,
+        global_query_attn: bool = False,
         **kwargs,
     ):
+        """
+        Axial Attention module.
+
+        Args:
+            dim (int): The input dimension.
+            heads (int): The number of attention heads.
+            row_attn (bool, optional): Whether to perform row attention. Defaults to True.
+            col_attn (bool, optional): Whether to perform column attention. Defaults to True.
+            accept_edges (bool, optional): Whether to accept edges for attention bias. Defaults to False.
+            global_query_attn (bool, optional): Whether to perform global query attention. Defaults to False.
+            **kwargs: Additional keyword arguments for the Attention module.
+        """
         super().__init__()
         assert not (
             not row_attn and not col_attn
@@ -260,7 +272,23 @@ class AxialAttention(nn.Module):
             else None
         )
 
-    def forward(self, x, edges=None, mask=None):
+    def forward(
+        self,
+        x: torch.Tensor,
+        edges: torch.Tensor = None,
+        mask: torch.Tensor = None,
+    ) -> torch.Tensor:
+        """
+        Forward pass of the Axial Attention module.
+
+        Args:
+            x (torch.Tensor): The input tensor of shape (batch_size, height, width, dim).
+            edges (torch.Tensor, optional): The edges tensor for attention bias. Defaults to None.
+            mask (torch.Tensor, optional): The mask tensor for masking attention. Defaults to None.
+
+        Returns:
+            torch.Tensor: The output tensor of shape (batch_size, height, width, dim).
+        """
         assert (
             self.row_attn ^ self.col_attn
         ), "has to be either row or column attention, but not both"
@@ -486,3 +514,28 @@ class ABlock(nn.Module):
 
     Triangular update -> self attention -> transition  -> self attention -> triangular update
     """
+
+    def __init__(
+        self,
+        dim: int,
+        seq_len: int,
+        heads: int,
+        dim_head: int,
+        dropout: float,
+        global_column_attn: bool,
+    ):
+        super().__init__()
+        self.dim = dim
+        self.seq_len = seq_len
+        self.heads = heads
+        self.dim_head = dim_head
+        self.dropout = dropout
+        self.global_column_attn = global_column_attn
+
+        self.msa = MsaAttentionBlock(
+            dim=dim,
+            seq_len=seq_len,
+            heads=heads,
+            dim_head=dim_head,
+            dropout=dropout,
+        )
