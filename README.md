@@ -4,7 +4,6 @@
 Implementation of Alpha Fold 3 from the paper: "Accurate structure prediction of biomolecular interactions with AlphaFold3" in PyTorch
 
 
-<<<<<<< HEAD
 ## install
 `$pip install alphafold3`
 
@@ -34,11 +33,3 @@ Implementation of Alpha Fold 3 from the paper: "Accurate structure prediction of
   year     =  2024
 }
 ```
-=======
-
-## install
-`$ pip3 install alphafold3`
-
-
-## usage
->>>>>>> 38200c1 ([CLEANUP])
