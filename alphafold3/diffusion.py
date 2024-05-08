@@ -63,7 +63,7 @@ class GeneticDiffusionModule(nn.Module):
             # Generate noise scaled by the noise level for the current step
             noise_level = self.noise_scale[step]
             noise = torch.randn_like(x) * noise_level
-            
+
             # Add noise to the input
             noisy_x = x + noise
 
@@ -77,17 +77,17 @@ class GeneticDiffusionModule(nn.Module):
         return noisy_x
 
 
-# Example usage
-if __name__ == "__main__":
-    model = GeneticDiffusionModule(
-        channels=3, training=True
-    )  # Assuming 3D coordinates
-    input_coords = torch.randn(
-        10, 100, 100, 3
-    )  # Example with batch size 10 and 100 atoms
-    ground_truth = torch.randn(
-        10, 100, 100, 3
-    )  # Example with batch size 10 and 100 atoms
-    output_coords, loss = model(input_coords, ground_truth)
-    print(output_coords)  # Should be (10, 100, 3)
-    print(loss)  # Should be a scalar (MSE loss value
+# # Example usage
+# if __name__ == "__main__":
+#     model = GeneticDiffusionModule(
+#         channels=3, training=True
+#     )  # Assuming 3D coordinates
+#     input_coords = torch.randn(
+#         10, 100, 100, 3
+#     )  # Example with batch size 10 and 100 atoms
+#     ground_truth = torch.randn(
+#         10, 100, 100, 3
+#     )  # Example with batch size 10 and 100 atoms
+#     output_coords, loss = model(input_coords, ground_truth)
+#     print(output_coords)  # Should be (10, 100, 3)
+#     print(loss)  # Should be a scalar (MSE loss value
