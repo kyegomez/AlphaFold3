@@ -33,3 +33,12 @@ Implementation of Alpha Fold 3 from the paper: "Accurate structure prediction of
   year     =  2024
 }
 ```
+
+
+# Todo
+
+- [ ] Implement Figure A, implement triangle update, transition, 
+- [ ] Impelment Figure B, per token, cond, 
+- [ ] Implement Figure C: Network Chunk,
+- [ ] Implement confidence module
+- [ ] Implement Template Module
