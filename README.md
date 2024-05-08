@@ -4,6 +4,9 @@
 Implementation of Alpha Fold 3 from the paper: "Accurate structure prediction of biomolecular interactions with AlphaFold3" in PyTorch
 
 
+## install
+`$pip install alphafold3`
+
 # Citation
 ```bibtex
 @article{Abramson2024-fj,
