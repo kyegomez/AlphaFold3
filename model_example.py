@@ -1,9 +1,11 @@
 import torch 
 from alphafold3 import AlphaFold3
 
-x = torch.randn(1, 5, 5, 64)
-y = torch.randn(1, 5, 64)
+# Create random tensors
+x = torch.randn(1, 5, 5, 64)  # Shape: (batch_size, seq_len, seq_len, dim)
+y = torch.randn(1, 5, 64)  # Shape: (batch_size, seq_len, dim)
 
+# Initialize AlphaFold3 model
 model = AlphaFold3(
     dim=64,
     seq_len=5,
@@ -16,5 +18,9 @@ model = AlphaFold3(
     num_diffusion_steps=1000,
     diffusion_depth=30,
 )
+
+# Forward pass through the model
 output = model(x, y)
+
+# Print the shape of the output tensor
 print(output.shape)
