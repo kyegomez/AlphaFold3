@@ -26,6 +26,7 @@ python = "^3.10"
 zetascale = "*"
 torch = "*"
 einops = "*"
+openfold = "*"
 
 
 [tool.poetry.group.lint.dependencies]

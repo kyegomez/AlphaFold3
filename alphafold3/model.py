@@ -539,3 +539,24 @@ class ABlock(nn.Module):
             dim_head=dim_head,
             dropout=dropout,
         )
+
+
+
+
+class AlphaFold3(nn.module):
+    def __init__(self, dim: int):
+        super().__init__()
+        self.dim = dim
+        
+        self.confidence_projection = nn.Linear(dim, 1)
+    
+    def forward(
+        self,
+        pair_representation: Tensor,
+        single_representation: Tensor,
+        return_loss: bool = False,
+        ground_truth: Tensor = None,
+        return_confidence: bool = False
+    ) -> Tensor:
+        pass
+    
