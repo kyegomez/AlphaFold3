@@ -35,10 +35,10 @@ Need review but basically it operates on atomic coordinates.
 
 ```python
 import torch
-from alphafold3.diffusion import GeneticDiffusionModule
+from alphafold3.diffusion import GeneticDiffusionModuleBlock
 
-# Create an instance of the GeneticDiffusionModule
-model = GeneticDiffusionModule(channels=3, training=True)
+# Create an instance of the GeneticDiffusionModuleBlock
+model = GeneticDiffusionModuleBlock(channels=3, training=True)
 
 # Generate random input coordinates
 input_coords = torch.randn(10, 100, 100, 3)

@@ -1,3 +1,4 @@
 torch
 zetascale
-swarms
+einops
+alphafold2-pytorch

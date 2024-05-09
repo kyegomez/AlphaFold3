@@ -1,5 +1,5 @@
-from alphafold3.diffusion import GeneticDiffusionModule
+from alphafold3.diffusion import GeneticDiffusionModuleBlock
 
 __all__ = [
-    "GeneticDiffusionModule",
+    "GeneticDiffusionModuleBlock",
 ]

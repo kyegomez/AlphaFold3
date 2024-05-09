@@ -3,7 +3,7 @@ from torch import nn, Tensor
 import torch.nn.functional as F
 
 
-class GeneticDiffusionModule(nn.Module):
+class GeneticDiffusionModuleBlock(nn.Module):
     """
     Diffusion Module from AlphaFold 3.
 
@@ -22,6 +22,7 @@ class GeneticDiffusionModule(nn.Module):
         channels: int,
         num_diffusion_steps: int = 1000,
         training: bool = False,
+        depth: int = 30,
     ):
         """
         Initializes the DiffusionModule with the specified number of channels and diffusion steps.
@@ -30,10 +31,11 @@ class GeneticDiffusionModule(nn.Module):
             channels (int): Number of feature channels for the input.
             num_diffusion_steps (int): Number of diffusion steps (time steps in the diffusion process).
         """
-        super(GeneticDiffusionModule, self).__init__()
+        super(GeneticDiffusionModuleBlock, self).__init__()
         self.channels = channels
         self.num_diffusion_steps = num_diffusion_steps
         self.training = training
+        self.depth = depth
         self.noise_scale = nn.Parameter(
             torch.linspace(1.0, 0.01, num_diffusion_steps)
         )
@@ -77,9 +79,68 @@ class GeneticDiffusionModule(nn.Module):
         return noisy_x
 
 
+class GeneticDiffusion(nn.Module):
+    """
+    GeneticDiffusion module for performing genetic diffusion.
+
+    Args:
+        channels (int): Number of input channels.
+        num_diffusion_steps (int): Number of diffusion steps to perform.
+        training (bool): Whether the module is in training mode or not.
+        depth (int): Number of diffusion module blocks to stack.
+
+    Attributes:
+        channels (int): Number of input channels.
+        num_diffusion_steps (int): Number of diffusion steps to perform.
+        training (bool): Whether the module is in training mode or not.
+        depth (int): Number of diffusion module blocks to stack.
+        layers (nn.ModuleList): List of GeneticDiffusionModuleBlock instances.
+
+    """
+
+    def __init__(
+        self,
+        channels: int,
+        num_diffusion_steps: int = 1000,
+        training: bool = False,
+        depth: int = 30,
+    ):
+        super(GeneticDiffusion, self).__init__()
+        self.channels = channels
+        self.num_diffusion_steps = num_diffusion_steps
+        self.training = training
+        self.depth = depth
+
+        # Layers
+        self.layers = nn.ModuleList(
+            [
+                GeneticDiffusionModuleBlock(
+                    channels, num_diffusion_steps, training, depth
+                )
+                for _ in range(depth)
+            ]
+        )
+
+    def forward(self, x: Tensor = None, ground_truth: Tensor = None):
+        """
+        Forward pass of the GeneticDiffusion module.
+
+        Args:
+            x (Tensor): Input tensor.
+            ground_truth (Tensor): Ground truth tensor.
+
+        Returns:
+            Tuple[Tensor, Tensor]: Output tensor and loss tensor.
+
+        """
+        for layer in self.layers:
+            x, loss = layer(x, ground_truth)
+        return x, loss
+
+
 # # Example usage
 # if __name__ == "__main__":
-#     model = GeneticDiffusionModule(
+#     model = GeneticDiffusionModuleBlock(
 #         channels=3, training=True
 #     )  # Assuming 3D coordinates
 #     input_coords = torch.randn(

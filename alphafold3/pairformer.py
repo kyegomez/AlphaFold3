@@ -4,7 +4,7 @@ from torch import nn
 from torch.utils.checkpoint import checkpoint_sequential
 from typing import Tuple, Optional
 import torch
-from alphafold3.model import (
+from model import (
     FeedForward,
     AxialAttention,
     TriangleMultiplicativeModule,

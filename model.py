@@ -1,13 +1,14 @@
-import torch
-from torch import nn, einsum
-from inspect import isfunction
 from dataclasses import dataclass
-import torch.nn.functional as F
+from inspect import isfunction
 
+import torch
+import torch.nn.functional as F
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
+from torch import Tensor, einsum, nn
 
-from alphafold2_pytorch.utils import *
+from alphafold3.pairformer import PairFormer
+from alphafold3.diffusion import GeneticDiffusion
 
 # structure module
 
@@ -509,10 +510,21 @@ class MsaAttentionBlock(nn.Module):
 # main evoformer class
 
 
-class ABlock(nn.Module):
-    """_summary_
+class AlphaFold3(nn.Module):
+    """
+    AlphaFold3 model implementation.
 
-    Triangular update -> self attention -> transition  -> self attention -> triangular update
+    Args:
+        dim (int): Dimension of the model.
+        seq_len (int): Length of the sequence.
+        heads (int): Number of attention heads.
+        dim_head (int): Dimension of each attention head.
+        attn_dropout (float): Dropout rate for attention layers.
+        ff_dropout (float): Dropout rate for feed-forward layers.
+        global_column_attn (bool, optional): Whether to use global column attention. Defaults to False.
+        pair_former_depth (int, optional): Depth of the PairFormer blocks. Defaults to 48.
+        num_diffusion_steps (int, optional): Number of diffusion steps. Defaults to 1000.
+        diffusion_depth (int, optional): Depth of the diffusion module. Defaults to 30.
     """
 
     def __init__(
@@ -521,42 +533,117 @@ class ABlock(nn.Module):
         seq_len: int,
         heads: int,
         dim_head: int,
-        dropout: float,
-        global_column_attn: bool,
+        attn_dropout: float,
+        ff_dropout: float,
+        global_column_attn: bool = False,
+        pair_former_depth: int = 48,
+        num_diffusion_steps: int = 1000,
+        diffusion_depth: int = 30,
     ):
         super().__init__()
         self.dim = dim
         self.seq_len = seq_len
         self.heads = heads
         self.dim_head = dim_head
-        self.dropout = dropout
+        self.attn_dropout = attn_dropout
+        self.ff_dropout = ff_dropout
         self.global_column_attn = global_column_attn
 
-        self.msa = MsaAttentionBlock(
+        self.confidence_projection = nn.Linear(dim, 1)
+
+        # Pairformer blocks
+        self.pairformer = PairFormer(
             dim=dim,
             seq_len=seq_len,
             heads=heads,
             dim_head=dim_head,
-            dropout=dropout,
+            attn_dropout=attn_dropout,
+            ff_dropout=ff_dropout,
+            global_column_attn=global_column_attn,
+            depth=pair_former_depth,
         )
 
+        # Diffusion module
+        self.diffuser = GeneticDiffusion(
+            channels=dim,
+            num_diffusion_steps=1000,
+            training=False,
+            depth=diffusion_depth,
+        )
 
-
-
-class AlphaFold3(nn.module):
-    def __init__(self, dim: int):
-        super().__init__()
-        self.dim = dim
-        
-        self.confidence_projection = nn.Linear(dim, 1)
-    
     def forward(
         self,
         pair_representation: Tensor,
         single_representation: Tensor,
         return_loss: bool = False,
         ground_truth: Tensor = None,
-        return_confidence: bool = False
+        return_confidence: bool = False,
+        return_embeddings: bool = True,
     ) -> Tensor:
-        pass
-    
+        """
+        Forward pass of the AlphaFold3 model.
+
+        Args:
+            pair_representation (Tensor): Pair representation tensor.
+            single_representation (Tensor): Single representation tensor.
+            return_loss (bool, optional): Whether to return the loss. Defaults to False.
+            ground_truth (Tensor, optional): Ground truth tensor. Defaults to None.
+            return_confidence (bool, optional): Whether to return the confidence. Defaults to False.
+            return_embeddings (bool, optional): Whether to return the embeddings. Defaults to False.
+
+        Returns:
+            Tensor: Output tensor based on the specified return type.
+        """
+        # Recycle bins
+        # recyle_bins = []
+        
+        # TODO: Input
+        # TODO: Template
+        # TODO: MSA
+        
+        b, n, n_two, dim = pair_representation.shape
+        b_two, n_two, dim_two = single_representation.shape
+
+        # Concat
+        x = torch.cat(
+            [pair_representation, single_representation], dim=1
+        )
+
+        # Apply the 48 blocks of PairFormer
+        x = self.pairformer(x)
+        print(x.shape)
+        
+        # Add the embeddings to the recycle bins
+        # recyle_bins.append(x)
+        
+
+        # Diffusion
+        x = self.diffuser(x, ground_truth)
+        
+        # If return_confidence is True, return the confidence
+        if return_confidence is True:
+            x = self.confidence_projection(x)
+            return x
+        
+        # If return_loss is True, return the loss
+        if return_embeddings is True:
+            return x
+        
+        
+x = torch.randn(1, 5, 5, 64)
+y = torch.randn(1, 5, 64)
+
+model = AlphaFold3(
+    dim=64,
+    seq_len=5,
+    heads=8,
+    dim_head=64,
+    attn_dropout=0.0,
+    ff_dropout=0.0,
+    global_column_attn=False,
+    pair_former_depth=48,
+    num_diffusion_steps=1000,
+    diffusion_depth=30,
+)
+output = model(x, y)
+print(output.shape)
