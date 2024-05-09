@@ -1,8 +1,8 @@
 import torch
-from alphafold3.diffusion import GeneticDiffusionModuleBlock
+from alphafold3.diffusion import GeneticDiffusion
 
 # Create an instance of the GeneticDiffusionModuleBlock
-model = GeneticDiffusionModuleBlock(channels=3, training=True)
+model = GeneticDiffusion(channels=3, training=True)
 
 # Generate random input coordinates
 input_coords = torch.randn(10, 100, 100, 3)
