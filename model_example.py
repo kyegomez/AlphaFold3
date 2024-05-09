@@ -1,8 +1,10 @@
-import torch 
+import torch
 from alphafold3 import AlphaFold3
 
 # Create random tensors
-x = torch.randn(1, 5, 5, 64)  # Shape: (batch_size, seq_len, seq_len, dim)
+x = torch.randn(
+    1, 5, 5, 64
+)  # Shape: (batch_size, seq_len, seq_len, dim)
 y = torch.randn(1, 5, 64)  # Shape: (batch_size, seq_len, dim)
 
 # Initialize AlphaFold3 model

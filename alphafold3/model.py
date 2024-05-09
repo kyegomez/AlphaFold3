@@ -596,11 +596,11 @@ class AlphaFold3(nn.Module):
         """
         # Recycle bins
         # recyle_bins = []
-        
+
         # TODO: Input
         # TODO: Template
         # TODO: MSA
-        
+
         b, n, n_two, dim = pair_representation.shape
         b_two, n_two, dim_two = single_representation.shape
 
@@ -612,21 +612,18 @@ class AlphaFold3(nn.Module):
         # Apply the 48 blocks of PairFormer
         x = self.pairformer(x)
         print(x.shape)
-        
+
         # Add the embeddings to the recycle bins
         # recyle_bins.append(x)
-        
 
         # Diffusion
         x = self.diffuser(x, ground_truth)
-        
+
         # If return_confidence is True, return the confidence
         if return_confidence is True:
             x = self.confidence_projection(x)
             return x
-        
+
         # If return_loss is True, return the loss
         if return_embeddings is True:
             return x
-        
-        
