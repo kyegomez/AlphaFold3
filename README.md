@@ -5,7 +5,7 @@ Implementation of Alpha Fold 3 from the paper: "Accurate structure prediction of
 
 
 ## install
-`$pip install alphafold3`
+`$ pip install alphafold3`
 
 ## Input Tensor Size Example
 
