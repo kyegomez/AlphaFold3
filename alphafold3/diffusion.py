@@ -133,9 +133,14 @@ class GeneticDiffusion(nn.Module):
             Tuple[Tensor, Tensor]: Output tensor and loss tensor.
 
         """
-        for layer in self.layers:
-            x, loss = layer(x, ground_truth)
-        return x, loss
+        if ground_truth is True:
+            for layer in self.layers:
+                x = layer(x, ground_truth)
+            return x
+        else:
+            for layer in self.layers:
+                x = layer(x)
+            return x
 
 
 # # Example usage

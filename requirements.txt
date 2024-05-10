@@ -1,4 +1,3 @@
 torch
 zetascale
 einops
-alphafold2-pytorch

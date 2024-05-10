@@ -1,8 +1,8 @@
-import torch
 from torch import Tensor, nn
 
 from alphafold3.diffusion import GeneticDiffusion
 from alphafold3.pairformer import PairFormer
+from einops import rearrange
 
 # structure module
 
@@ -63,10 +63,13 @@ class AlphaFold3(nn.Module):
         # Diffusion module
         self.diffuser = GeneticDiffusion(
             channels=dim,
-            num_diffusion_steps=1000,
+            num_diffusion_steps=num_diffusion_steps,
             training=False,
             depth=diffusion_depth,
         )
+
+        # Norm
+        self.norm = nn.Layernorm(dim)
 
     def forward(
         self,
@@ -101,20 +104,39 @@ class AlphaFold3(nn.Module):
         b, n, n_two, dim = pair_representation.shape
         b_two, n_two, dim_two = single_representation.shape
 
-        # Concat
-        x = torch.cat(
-            [pair_representation, single_representation], dim=1
+        # Transforming the tensor into 4d for concatentation
+        single_representation = single_representation.unsqueeze(2)
+        print(single_representation.shape)
+        z, j, y, d = single_representation.shape
+        single_representation = rearrange(
+            single_representation, "b n s d -> b n d s"
         )
+        single_representation = nn.Linear(y, n)(single_representation)
+        print(single_representation.shape)
+        single_representation = rearrange(
+            single_representation, "b n d s -> b n s d"
+        )
+        print(single_representation.shape)
+
+        # # Concat
+        # x = torch.cat(
+        #     [pair_representation, single_representation], dim=1
+        # )
+        pair_representation = self.norm(pair_representation)
+        single_representation = self.norm(single_representation)
 
         # Apply the 48 blocks of PairFormer
-        x = self.pairformer(x)
+        x, m = self.pairformer(
+            pair_representation, single_representation
+        )
         print(x.shape)
+        print(m.shape)
 
         # Add the embeddings to the recycle bins
         # recyle_bins.append(x)
 
         # Diffusion
-        x = self.diffuser(x, ground_truth)
+        x = self.diffuser(x)
 
         # If return_confidence is True, return the confidence
         if return_confidence is True:

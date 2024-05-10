@@ -22,7 +22,8 @@ model = AlphaFold3(
 )
 
 # Forward pass through the model
-output = model(x, y)
+output = model(x, y, return_confidence=True)
 
 # Print the shape of the output tensor
+print(output)
 print(output.shape)
