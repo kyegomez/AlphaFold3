@@ -155,8 +155,14 @@ print(output.shape)
 
 # Todo
 
-- [ ] Implement Figure A, implement triangle update, transition, 
-- [ ] Impelment Figure B, per token, cond, 
-- [ ] Implement Figure C: Network Chunk,
-- [ ] Implement confidence module
-- [ ] Implement Template Module
+## Model Architecture
+- Implement input Embedder from Alphafold2 openfold implementation
+- Implement the template module from openfold
+- Implement the MSA embedding from openfold
+- Fix residuals and make sure pair representation and generated output goes into the diffusion model
+- Implement reclying to fix residuals
+
+
+## Training pipeline
+- Get all datasets pushed to huggingface
+
