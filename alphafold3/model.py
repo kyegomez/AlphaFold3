@@ -104,7 +104,7 @@ class AlphaFold3(nn.Module):
         b, n, n_two, dim = pair_representation.shape
         b_two, n_two, dim_two = single_representation.shape
 
-        # Transforming the tensor into 4d for concatentation
+        # Transforming the tensor into 4d for concatenation
         single_representation = single_representation.unsqueeze(2)
         print(single_representation.shape)
         z, j, y, d = single_representation.shape
