@@ -156,9 +156,9 @@ print(output.shape)
 # Todo
 
 ## Model Architecture
-- Implement input Embedder from Alphafold2 openfold implementation
-- Implement the template module from openfold
-- Implement the MSA embedding from openfold
+- Implement input Embedder from Alphafold2 openfold implementation [LINK](https://github.com/aqlaboratory/openfold)
+- Implement the template module from openfold [LINK](https://github.com/aqlaboratory/openfold)
+- Implement the MSA embedding from openfold [LINK](https://github.com/aqlaboratory/openfold)
 - Fix residuals and make sure pair representation and generated output goes into the diffusion model
 - Implement reclying to fix residuals
 
