@@ -166,3 +166,6 @@ print(output.shape)
 ## Training pipeline
 - Get all datasets pushed to huggingface
 
+# Resources
+- [ EvoFormer Paper ](https://www.nature.com/articles/s41586-021-03819-2)
+- [ Pairformer](https://arxiv.org/pdf/2311.03583)
