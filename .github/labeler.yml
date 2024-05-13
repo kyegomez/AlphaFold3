@@ -1,12 +1,54 @@
 # this is a config file for the github action labeler
 
-# Add 'label1' to any changes within 'example' folder or any subfolders
-example_change:
-- example/**
+# Add 'root' label to any root file changes
+# Quotation marks are required for the leading asterisk
+root:
+- changed-files:
+  - any-glob-to-any-file: '*'
 
-# Add 'label2' to any file changes within 'example2' folder
-example2_change: example2/*
+# Add 'Documentation' label to any changes within 'docs' folder or any subfolders
+Documentation:
+- changed-files:
+  - any-glob-to-any-file: docs/**
 
-# Add label3 to any change to .txt files within the entire repository. Quotation marks are required for the leading asterisk
-text_files:
-- '**/*.txt'
+# Add 'Tests' label to any file changes within 'docs' folder
+Tests:
+- changed-files:
+  - any-glob-to-any-file: tests/*
+
+# Add 'Documentation' label to any file changes within 'docs' or 'guides' folders
+ghactions:
+- changed-files:
+  - any-glob-to-any-file:
+    - .github/workflows/*
+    - .github/*
+
+# Add 'Scripts' label to any file changes within 'docs' folder
+Scripts:
+- changed-files:
+  - any-glob-to-any-file: scripts/*
+  
+## Equivalent of the above mentioned configuration using another syntax
+Documentation:
+- changed-files:
+  - any-glob-to-any-file: ['docs/*', 'guides/*']
+
+# Add 'Documentation' label to any change to .md files within the entire repository 
+Documentation:
+- changed-files:
+  - any-glob-to-any-file: '**/*.md'
+
+# Add 'source' label to any change to src files within the source dir EXCEPT for the docs sub-folder
+source:
+- all:
+  - changed-files:
+    - any-glob-to-any-file: 'src/**/*'
+    - all-globs-to-all-files: '!src/docs/*'
+
+# Add 'feature' label to any PR where the head branch name starts with `feature` or has a `feature` section in the name
+feature:
+ - head-branch: ['^feature', 'feature']
+
+# Add 'release' label to any PR that is opened against the `main` branch
+release:
+ - base-branch: 'main'
