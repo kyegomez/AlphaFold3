@@ -215,8 +215,6 @@ Smaller, start here
 - [Protein data bank](https://www.rcsb.org/)
 - [Working with pdb data](https://pdb101.rcsb.org/learn/guide-to-understanding-pdb-data/dealing-with-coordinates)
 - [PDB ligands](https://huggingface.co/datasets/jglaser/pdb_protein_ligand_complexes)
-
-Much larger, for verification
 - [AlphaFold Protein Structure Database](https://alphafold.ebi.ac.uk/)
 - [Colab notebook for AlphaFold search](https://colab.research.google.com/github/deepmind/alphafold/blob/main/notebooks/AlphaFold.ipynb)
 
@@ -230,16 +228,13 @@ Much larger, for verification
 
 ## Tools
 
-- [HaskTorch - Haskell bindings for PyTorch](https://github.com/hasktorch/hasktorch)
-
 - [PyMol](https://pymol.org/)
 - [ChimeraX](https://www.cgl.ucsf.edu/chimerax/download.html)
 
 ## Community
 
-- [OpenBioML](https://discord.gg/nh3gCv6b)
-
-## Classics 
+- [Agora](https://discord.gg/BAThAeeg)
+## Books 
 
 - [Thinking in Systems](https://www.chelseagreen.com/product/thinking-in-systems/)
 
