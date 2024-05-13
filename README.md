@@ -169,3 +169,4 @@ print(output.shape)
 # Resources
 - [ EvoFormer Paper ](https://www.nature.com/articles/s41586-021-03819-2)
 - [ Pairformer](https://arxiv.org/pdf/2311.03583)
+- [ AlphaFold 3 Paper](https://www.nature.com/articles/s41586-024-07487-w)
