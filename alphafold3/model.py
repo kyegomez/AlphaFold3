@@ -69,7 +69,7 @@ class AlphaFold3(nn.Module):
         )
 
         # Norm
-        self.norm = nn.Layernorm(dim)
+        self.norm = nn.LayerNorm(dim)
 
     def forward(
         self,
