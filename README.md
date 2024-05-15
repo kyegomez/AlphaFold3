@@ -206,6 +206,7 @@ implementation [LINK](https://github.com/aqlaboratory/openfold)
 - [ EvoFormer Paper ](https://www.nature.com/articles/s41586-021-03819-2)
 - [ Pairformer](https://arxiv.org/pdf/2311.03583)
 - [ AlphaFold 3 Paper](https://www.nature.com/articles/s41586-024-07487-w)
+- [ AlphaFold 3 Supplementary information] (https://static-content.springer.com/esm/art%3A10.1038%2Fs41586-021-03819-2/MediaObjects/41586_2021_3819_MOESM1_ESM.pdf)
 
 - [OpenFold](https://github.com/aqlaboratory/openfold)
 
