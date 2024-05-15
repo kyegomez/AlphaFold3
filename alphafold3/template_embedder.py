@@ -5,19 +5,19 @@ from alphafold3.pairformer import PairFormer
 
 class TemplateEmbedder(nn.Module):
     def __init__(
-        self, 
+        self,
         dim: int = None,
-        depth: int = 2, 
+        depth: int = 2,
         seq_len: int = None,
         heads: int = 64,
         dim_head: int = 64,
         attn_dropout: float = 0.0,
         ff_dropout: float = 0.0,
         global_column_attn: bool = False,
-        c: int = 64, 
+        c: int = 64,
         Ntemplates: int = 1,
         *args,
-        **kwargs
+        **kwargs,
     ):
         super(TemplateEmbedder, self).__init__()
         # Define layers used in the embedding
@@ -34,7 +34,7 @@ class TemplateEmbedder(nn.Module):
             ff_dropout=ff_dropout,
             depth=depth,
             *args,
-            **kwargs
+            **kwargs,
         )
         self.relu = nn.ReLU()
         self.final_linear = nn.Linear(c, c, bias=False)
