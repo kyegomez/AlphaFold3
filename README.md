@@ -87,6 +87,16 @@ output = model(x, y)
 print(output.shape)
 ```
 
+# Docker
+A basic PyTorch image is provided that includes the dependencies to run this code.
+
+```bash
+## Build the image
+docker build -t af3 .
+
+## Run the image (with GPUs)
+docker run  --gpus all -it af3
+```
 
 # Citation
 ```bibtex
