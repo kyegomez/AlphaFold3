@@ -5,10 +5,15 @@ lucidrains
 https://github.com/lucidrains/alphafold3-pytorch
 ZiyaoLi
 https://github.com/ZiyaoLi/AlphaFold3
+HZ3519
+https://github.com/HZ3519/alphafold3
 and openfold
 https://github.com/aqlaboratory/openfold
 
-Not optimized for speed, working on correctness for now
+Not optimized for speed, working on correctness for now.
+Once all 31 algorithms are well implemented and tensors shapes are commented, it will be easy to build the final model.
+The eventual goal is fast, understandable, and Huggingface integrated.
+If some tensor shapes aren't commented, an algorithm is not done or wrong, or you see an improvement, please contribute!
 """
 
 import torch
@@ -16,10 +21,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from functools import partial
-from einops import rearrange, repeat, reduce, einsum, pack, unpack
+from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
 
 from attention import Attention
+from configuration_alphafold import AlphaFoldConfig as config
 
 # n_token - number of tokens
 # n_templ - number of templates
@@ -58,39 +64,53 @@ from attention import Attention
 # template_unit_vector (n_templ, n_token, n_token, 3) - The unit vector of the displacement of the Cα atom of all residues within the local frame of each residue. Local frames are computed as in [1].
 # token_bonds (n_token, n_token) - A 2D matrix indicating if there is a bond between any atom in token i and token j, restricted to just polymer-ligand and ligand-ligand bonds and bonds less than 2.4 Å during training.
 
-
 LinearNoBias = partial(nn.Linear, bias = False)
 Linear = partial(nn.Linear, bias=True)
+
+def exists(v):
+    return v is not None
+
+def default(v, d):
+    return v if exists(v) else d
 
 
 # Algorithm 1
 class MainInferenceLoop(nn.Module):
-    def __init__(self, N_cycle=4, c_s=384, c_z=128):
+    def __init__(self, config):
         super().__init__()
-        self.N_cycle = N_cycle
-        self.c_s = c_s
-        self.c_z = c_z
-
-        self.input_embedder = InputFeatureEmbedder()
-        self.pos_encoding = RelativePositionEncoding()
-
+        self.input_embedder = InputFeatureEmbedder(config)
+        self.pos_encoding = RelativePositionEncoding(config)
+        self.template_embedder = TemplateEmbedder(config)
+        self.msa_module = MSAModule(config)
 
     def forward(self, f):
-        s_inputs = self.input_embedder(f) # (B, n_token, c_s)
+        s_inputs = self.input_embedder(f) # (B, n_token, dim_single)
         pass
 
 
 # Algorithm 2
-def InputFeatureEmbedder():
-    pass
+class InputFeatureEmbedder(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.encoder = AtomAttentionEncoder(config)
+
+    def forward(self, features, r_l, s_trunk, z_ij):
+        token_rep = self.encoder(features, r_l, s_trunk, z_ij)
+        s = torch.concat(
+            token_rep, # (b, n_token, c_token)
+            features['restype'], # (b, n_token, 32)
+            features['profile'], # (b, n_token, 32)
+            features['deletion_mean'].unsqueeze(-1) # (b, n_token, 1)
+        ) # (b, n_token, c_token+65)
+        return s
 
 
 # Algorithm 3
 class RelativePositionEncoding(nn.Module):
-    def __init__(self, r_max=32, s_max=2) -> None:
+    def __init__(self, config):
         super().__init__()
-        self.r_max = r_max
-        self.s_max = s_max
+        self.r_max = config.r_max
+        self.s_max = config.s_max
 
     def forward(self, features, dtype = torch.float):
         asym_id = features["asym_id"] # (n_token)
@@ -106,7 +126,7 @@ class RelativePositionEncoding(nn.Module):
             return x[..., :, None] - x[..., None, :]
 
         b_same_chain = _pair_same(asym_id)
-        b_same_res = _pair_same(res_idx) & b_same_chain     # same res must be same chain
+        b_same_res = _pair_same(res_idx) & b_same_chain # same res must be same chain
         b_same_entity = _pair_same(entity_id)
 
         d_res = torch.where(
@@ -145,16 +165,48 @@ def one_hot(x, bins):
 
 
 # Algorithm 5
-class AtomAttentionEncoder(nn.Module):
-    def __init__(self, c_atom, c_atompair, c_token):
+class AtomToTokenPooler(nn.Module):
+    def __init__(self, dim, dim_out=None, atoms_per_window=27):
         super().__init__()
-        self.c_atom = c_atom
-        self.c_atompair = c_atompair
-        self.c_token = c_token
+        dim_out = default(dim_out, dim)
+
+        self.proj = nn.Sequential(
+            LinearNoBias(dim, dim_out),
+            nn.ReLU()
+        )
+
+        self.atoms_per_window = atoms_per_window
+
+    def forward(self, atom_feats, atom_mask):
+        # Masked mean pool the atom features for each residue, for the token transformer
+        w = self.atoms_per_window
+
+        atom_feats = self.proj(atom_feats)
+
+        windowed_atom_feats = rearrange(atom_feats, 'b (n w) da -> b n w da', w=w)
+        windowed_atom_mask = rearrange(atom_mask, 'b (n w) -> b n w', w=w)
+
+        assert windowed_atom_mask.any(dim=-1).all(), 'Atom mask must contain one valid atom for each window'
+
+        windowed_atom_feats = windowed_atom_feats.masked_fill(~windowed_atom_mask.unsqueeze(-1), 0.)
+
+        num = windowed_atom_feats.sum(dim=-2)
+        den = windowed_atom_mask.float().sum(dim=-1, keepdim=True)
+
+        tokens = num / den
+        return tokens
+    
+
+class AtomAttentionEncoder(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        c_atom = config.c_atom
+        c_atompair = config.c_atompair
+        c_token = config.c_token
         self.linear_c = LinearNoBias(389, c_atom) # 3+1+1+128+256
-        self.linear_p1 = LinearNoBias(3, c_atompair)
-        self.linear_p2 = LinearNoBias(1, c_atompair)
-        self.linear_p3 = LinearNoBias(1, c_atompair)
+        self.linear_pair1 = LinearNoBias(3, c_atompair)
+        self.linear_pair2 = LinearNoBias(1, c_atompair)
+        self.linear_pair3 = LinearNoBias(1, c_atompair)
         self.linear_c_trunk = LinearNoBias(c_token, c_atom)
         self.layer_norm_s_trunk = nn.LayerNorm(c_token)
         self.linear_p_trunk = LinearNoBias(c_token, c_atompair)
@@ -172,14 +224,18 @@ class AtomAttentionEncoder(nn.Module):
             LinearNoBias(c_atompair, c_atompair)
         )
         self.atom_transformer = AtomTransformer(n_blocks=3, n_heads=4)
-        self.linear_a = LinearNoBias(c_atom, c_token)
+        self.atom_pooler = AtomToTokenPooler(c_atom, c_token)
 
     def forward(self, features, r_l, s_trunk_i, z_ij):
+        # a_i : token_rep, q_l : noised_rep, c_l : single_rep, p_lm : pair_rep
+
+        # save meta data
         ref_pos = features['ref_pos'] # (b, n_atom, 3)
         ref_space_uid = features['ref_space_uid'] # (b, n_atom)
         tok_idx = features['token_index'] # (b, n_token)
+
         # Create the atom single conditioning: Embed per-atom meta data
-        c_l = self.linear_c(torch.cat([
+        single_rep = self.linear_c(torch.cat([
                 ref_pos,
                 features['ref_charge'].view(-1, 1), # (b, n_atom, 1)
                 features['ref_mask'].view(-1, 1), # (b, n_atom, 1)
@@ -192,51 +248,50 @@ class AtomAttentionEncoder(nn.Module):
         d_lm = ref_pos[:, None, :] - ref_pos[:, :, None] # (b, n_atom, n_atom, 3)
         ref_space_uid = ref_space_uid.unsqueeze(-1)
         v_lm = (ref_space_uid[:, None, :] == ref_space_uid[:, :, None]).float() # (b, n_atom, n_atom, 1)
-        p_lm = self.linear_p1(d_lm) * v_lm # (b, n_atom, n_atom, c_atompair)
+        pair_rep = self.linear_pair1(d_lm) * v_lm # (b, n_atom, n_atom, c_atompair)
 
         # Embed pairwise inverse squared distances, and the valid mask
-        p_lm += self.linear_p2(1 / (1 + torch.sum(d_lm**2, dim=-1, keepdim=True))) * v_lm # (b, n_atom, n_atom, c_atompair)
-        p_lm += self.linear_p3(v_lm) # (b, n_atom, n_atom, c_atompair)
+        pair_rep += self.linear_pair2(1 / (1 + torch.sum(d_lm**2, dim=-1, keepdim=True))) * v_lm # (b, n_atom, n_atom, c_atompair)
+        pair_rep += self.linear_pair3(v_lm) # (b, n_atom, n_atom, c_atompair)
 
         # Initialize the atom single representation as the single conditioning
-        q_l = c_l.clone()
+        noised_rep = single_rep.clone()
 
         # If provided, add trunk embeddings and noisy positions
         if r_l is not None:
             # Broadcast the single and pair embedding from the trunk
-            c_l += self.linear_c_trunk(self.layer_norm_s_trunk(s_trunk_i[tok_idx])) # (b, n_token, c_atom)
-            p_lm += self.linear_p_trunk(self.layer_norm_z(z_ij[tok_idx[:, None], tok_idx[None, :]])) # (b, n_token, n_token, c_atom)
+            single_rep += self.linear_c_trunk(self.layer_norm_s_trunk(s_trunk_i[tok_idx])) # (b, n_token, c_atom)
+            pair_rep += self.linear_p_trunk(self.layer_norm_z(z_ij[tok_idx[:, None], tok_idx[None, :]])) # (b, n_token, n_token, c_atom)
+
             # Add the noisy positions
-            q_l += self.linear_q_noisy(r_l) # (b, n_token, c_atom)
+            noised_rep += self.linear_q_noisy(r_l) # (b, n_token, c_atom)
 
         # Add the combined single conditioning to the pair representation
-        p_lm += self.linear_p_c1(torch.relu(c_l[:, None, :])) + self.linear_p_c2(torch.relu(c_l[:, :, None])) # (b, n_atom, n_atom, c_atompair)
+        pair_rep += self.linear_p_c1(torch.relu(single_rep[:, None, :])) + self.linear_p_c2(torch.relu(single_rep[:, :, None])) # (b, n_atom, n_atom, c_atompair)
 
         # Run a small MLP on the pair activations
-        p_lm = self.mlp_p(p_lm) # (b, n_atom, n_atom, c_atompair)
+        pair_rep = self.mlp_p(pair_rep) # (b, n_atom, n_atom, c_atompair)
 
-        # Cross attention transformer
-        q_l = self.atom_transformer(q_l, c_l, p_lm)
+        # Cross attention transformer - noised_repr, single_repr, pairwise_repr
+        noised_rep = self.atom_transformer(noised_rep, single_rep, pair_rep)
 
         # Aggregate per-atom representation to per-token representation
-        a_i = torch.zeros(len(torch.unique(tok_idx)), self.c_token, device=tok_idx.device)
-        a_i.index_add_(0, tok_idx, self.linear_a(torch.relu(q_l)))
-        a_i = a_i / torch.bincount(tok_idx, minlength=len(a_i))[:, None]
+        token_rep = self.atom_pooler(noised_rep) # (b, n_token, c_token)
 
-        q_skip_l, c_skip_l, p_skip_lm = q_l, c_l, p_lm
+        noised_skip, single_skip, pair_skip = noised_rep, single_rep, pair_rep
 
-        return a_i, q_skip_l, c_skip_l, p_skip_lm
+        return token_rep, noised_skip, single_skip, pair_skip
 
 
 # Algorithm 6
 class AtomAttentionDecoder(nn.Module):
-    def __init__(self, c_atom, c_token):
+    def __init__(self, config, n_blocks=3, n_heads=4):
         super().__init__()
-        self.linear_q = LinearNoBias(c_token, c_atom)
-        self.atom_transformer = AtomTransformer(n_blocks=3, n_heads=4)
+        self.linear_q = LinearNoBias(config.c_token, config.c_atom)
+        self.atom_transformer = AtomTransformer(n_blocks, n_heads)
         self.linear_r_update = nn.Sequential(
-            nn.LayerNorm(c_atom),
-            LinearNoBias(c_atom, 3)
+            nn.LayerNorm(config.c_atom),
+            LinearNoBias(config.c_atom, 3)
         )
 
     def forward(self, a_i, q_skip_l, c_skip_l, p_skip_lm, tok_idx):
@@ -284,49 +339,21 @@ class AtomTransformer(nn.Module):
 
 # Algorithm 8
 class MSAModule(nn.Module):
-    def __init__(
-        self,
-        dim_single=384,
-        dim_pairwise=128,
-        depth=4,
-        dim_msa=64,
-        dim_msa_input=None,
-        outer_product_mean_dim_hidden=32,
-        msa_pwa_dropout_row_prob=0.15,
-        msa_pwa_heads=8,
-        msa_pwa_dim_head=32,
-        pairwise_block_kwargs=None
-    ):
+    def __init__(self, config, pairwise_block_kwargs=None):
         super().__init__()
-
         if pairwise_block_kwargs is None:
             pairwise_block_kwargs = {}
 
-        self.msa_init_proj = LinearNoBias(dim_msa_input, dim_msa) if dim_msa_input is not None else nn.Identity()
-
-        self.single_to_msa_feats = LinearNoBias(dim_single, dim_msa)
+        self.msa_init_proj = LinearNoBias(config.dim_msa_input, config.dim_msa) if config.dim_msa_input is not None else nn.Identity()
+        self.single_to_msa_feats = LinearNoBias(config.dim_single, config.dim_msa)
 
         self.layers = nn.ModuleList([])
-        for _ in range(depth):
-            msa_pre_ln = partial(nn.LayerNorm, normalized_shape=dim_msa)
-
-            outer_product_mean = OuterProductMean(
-                dim_msa=dim_msa,
-                dim_pairwise=dim_pairwise,
-                dim_hidden=outer_product_mean_dim_hidden
-            )
-
-            msa_pair_weighted_avg = MSAPairWeightedAveraging(
-                dim_msa=dim_msa,
-                dim_pairwise=dim_pairwise,
-                heads=msa_pwa_heads,
-                dim_head=msa_pwa_dim_head
-            )
-
-            msa_transition = Transition(dim=dim_msa)
-
-            pairwise_block = PairwiseBlock(dim_pairwise=dim_pairwise, **pairwise_block_kwargs)
-
+        for _ in range(config.msa_depth):
+            msa_pre_ln = partial(nn.LayerNorm, normalized_shape=config.dim_msa)
+            outer_product_mean = OuterProductMean(config)
+            msa_pair_weighted_avg = MSAPairWeightedAveraging(config)
+            msa_transition = Transition(config.dim_msa)
+            pairwise_block = PairwiseBlock(dim_pair=config.dim_pair, **pairwise_block_kwargs)
             self.layers.append(nn.ModuleList([
                 outer_product_mean,
                 msa_pair_weighted_avg,
@@ -354,8 +381,10 @@ class MSAModule(nn.Module):
 
 # Algorithm 9
 class OuterProductMean(nn.Module):
-    def __init__(self, c=32, c_z=128):
+    def __init__(self, config):
         super().__init__()
+        c = config.outer_product_dim
+        c_z = config.pair_dim
         self.ln = nn.LayerNorm(c)
         self.lin1 = LinearNoBias(c, c)
         self.lin2 = LinearNoBias(c, c)
@@ -371,8 +400,13 @@ class OuterProductMean(nn.Module):
 
 # Algorithm 10
 class MSAPairWeightedAveraging(nn.Module):
-    def __init__(self, dim_msa=64, dim_pairwise=128, dim_head=32, heads=8, dropout=0.0):
+    def __init__(self, config):
         super().__init__()
+        dim_head = config.msa_pwa_dim_head
+        heads = config.msa_pwa_heads
+        dim_msa = config.dim_msa
+        dim_pair = config.dim_pair
+        dropout = config.msa_pwa_dropout_row_prob
         dim_inner = dim_head * heads
 
         self.msa_to_values_and_gates = nn.Sequential(
@@ -382,8 +416,8 @@ class MSAPairWeightedAveraging(nn.Module):
         )
 
         self.pairwise_repr_to_attn = nn.Sequential(
-            nn.LayerNorm(dim_pairwise),
-            LinearNoBias(dim_pairwise, heads),
+            nn.LayerNorm(dim_pair),
+            LinearNoBias(dim_pair, heads),
             Rearrange('b i j h -> b h i j')
         )
 
@@ -612,28 +646,22 @@ class TemplateEmbedder(nn.Module):
 
 # Algorithm 17
 class PairwiseBlock(nn.Module):
-    def __init__(
-        self,
-        dim_pairwise=128,
-        tri_mult_dim_hidden=None,
-        tri_attn_dim_head=32,
-        tri_attn_heads=4,
-        dropout_row_prob=0.25,
-        dropout_col_prob=0.25,
-    ):
+    def __init__(self, config):
         super().__init__()
-
-        pre_ln = partial(nn.LayerNorm, normalized_shape=dim_pairwise)
+        dim_pair = config.dim_pair
+        dropout_row_prob = config.dropout_row_prob
+        dropout_col_prob = config.dropout_col_prob
+        pre_ln = partial(nn.LayerNorm, normalized_shape=dim_pair)
 
         tri_mult_kwargs = {
-            'dim': dim_pairwise,
-            'dim_hidden': tri_mult_dim_hidden
+            'dim': dim_pair,
+            'dim_hidden': config.tri_mult_dim_hidden
         }
 
         tri_attn_kwargs = {
-            'dim': dim_pairwise,
-            'heads': tri_attn_heads,
-            'dim_head': tri_attn_dim_head
+            'dim': dim_pair,
+            'heads': config.tri_attn_heads,
+            'dim_head': config.tri_attn_dim_head
         }
 
         self.tri_mult_outgoing = nn.Sequential(
@@ -649,7 +677,7 @@ class PairwiseBlock(nn.Module):
             pre_ln(TriangleAttention(node_type='ending', dropout=dropout_col_prob, **tri_attn_kwargs))
         )
         self.pairwise_transition = nn.Sequential(
-            pre_ln(Transition(dim=dim_pairwise))
+            pre_ln(Transition(dim_pair))
         )
 
     def forward(self, pairwise_repr, mask=None):
@@ -663,36 +691,26 @@ class PairwiseBlock(nn.Module):
 
 
 class PairformerStack(nn.Module):
-    def __init__(
-        self,
-        dim_single=384,
-        dim_pairwise=128,
-        depth=48,
-        pair_bias_attn_dim_head=64,
-        pair_bias_attn_heads=16,
-        dropout_row_prob=0.25,
-        pairwise_block_kwargs=None
-    ):
+    def __init__(self, config, pairwise_block_kwargs=None):
         super().__init__()
 
         if pairwise_block_kwargs is None:
             pairwise_block_kwargs = {}
 
         pair_bias_attn_kwargs = {
-            'dim': dim_single,
-            'dim_pairwise': dim_pairwise,
-            'heads': pair_bias_attn_heads,
-            'dim_head': pair_bias_attn_dim_head,
-            'dropout': dropout_row_prob
+            'dim': config.dim_single,
+            'dim_pair': config.dim_pair,
+            'heads': config.pair_bias_attn_heads,
+            'dim_head': config.pair_bias_attn_dim_head,
+            'dropout': config.dropout_row_prob
         }
 
         self.layers = nn.ModuleList([])
-        for _ in range(depth):
-            single_pre_ln = partial(nn.LayerNorm, normalized_shape=dim_single)
-
-            pairwise_block = PairwiseBlock(dim_pairwise=dim_pairwise, **pairwise_block_kwargs)
+        for _ in range(config.pairformer_depth):
+            single_pre_ln = partial(nn.LayerNorm, normalized_shape=config.dim_single)
+            pairwise_block = PairwiseBlock(dim_pair=config.dim_pair, **pairwise_block_kwargs)
             pair_bias_attn = AttentionPairBias(**pair_bias_attn_kwargs)
-            single_transition = Transition(dim=dim_single)
+            single_transition = Transition(config.dim_single)
 
             self.layers.append(nn.ModuleList([
                 pairwise_block,
@@ -716,18 +734,34 @@ def SampleDiffusion():
 
 
 # Algorithm 19
-def CentreRandomAugmentation():
-    pass
+class CentreRandomAugmentation(nn.Module):
+    def __init__(self, s_trans: float = 1.0):
+        super().__init__()
+        self.s_trans = s_trans
+
+    def forward(self, x_l: torch.Tensor) -> torch.Tensor:
+        x_l = x_l - x_l.mean(dim=-2, keepdim=True)
+        R = self.uniform_random_rotation()
+        t = self.s_trans * torch.randn(3)
+        x_l = torch.einsum("ij,jk->ik", R, x_l) + t
+        return x_l
+
+    def uniform_random_rotation(self) -> torch.Tensor:
+        random_matrix = torch.randn(3, 3)
+        q, r = torch.linalg.qr(random_matrix)
+        d = torch.diag(r).sign()
+        q *= d.unsqueeze(0)
+        return q
 
 
 # Algorithm 20
 class DiffusionModule(nn.Module):
     def __init__(
         self,
-        dim_pairwise_trunk,
-        dim_pairwise_rel_pos_feats,
+        dim_pair_trunk,
+        dim_pair_rel_pos_feats,
         atoms_per_window=27,
-        dim_pairwise=128,
+        dim_pair=128,
         sigma_data=16,
         dim_atom=128,
         dim_atompair=16,
@@ -762,8 +796,8 @@ class DiffusionModule(nn.Module):
         )
 
         self.pairwise_conditioner = PairwiseConditioning(
-            dim_pairwise_trunk=dim_pairwise_trunk,
-            dim_pairwise_rel_pos_feats=dim_pairwise_rel_pos_feats,
+            dim_pair_trunk=dim_pair_trunk,
+            dim_pair_rel_pos_feats=dim_pair_rel_pos_feats,
             **pairwise_cond_kwargs
         )
 
@@ -772,7 +806,7 @@ class DiffusionModule(nn.Module):
         self.atom_encoder = DiffusionTransformer(
             dim=dim_atom,
             dim_single_cond=dim_atom,
-            dim_pairwise=dim_atompair,
+            dim_pair=dim_atompair,
             attn_window_size=atoms_per_window,
             depth=atom_encoder_depth,
             heads=atom_encoder_heads
@@ -786,7 +820,7 @@ class DiffusionModule(nn.Module):
         self.token_transformer = DiffusionTransformer(
             dim=dim_atom,
             dim_single_cond=dim_single,
-            dim_pairwise=dim_pairwise,
+            dim_pair=dim_pair,
             depth=token_transformer_depth,
             heads=token_transformer_heads
         )
@@ -798,7 +832,7 @@ class DiffusionModule(nn.Module):
         self.atom_decoder = DiffusionTransformer(
             dim=dim_atom,
             dim_single_cond=dim_atom,
-            dim_pairwise=dim_atompair,
+            dim_pair=dim_atompair,
             attn_window_size=atoms_per_window,
             depth=atom_decoder_depth,
             heads=atom_decoder_heads
@@ -911,30 +945,30 @@ class ConditionWrapper(nn.Module):
 class PairwiseConditioning(nn.Module):
     def __init__(
         self,
-        dim_pairwise_trunk,
-        dim_pairwise_rel_pos_feats,
-        dim_pairwise=128,
+        dim_pair_trunk,
+        dim_pair_rel_pos_feats,
+        dim_pair=128,
         num_transitions=2,
         transition_expansion_factor=2,
     ):
         super().__init__()
 
-        self.dim_pairwise_init_proj = nn.Sequential(
-            nn.Linear(dim_pairwise_trunk + dim_pairwise_rel_pos_feats, dim_pairwise, bias=False),
-            nn.LayerNorm(dim_pairwise)
+        self.dim_pair_init_proj = nn.Sequential(
+            nn.Linear(dim_pair_trunk + dim_pair_rel_pos_feats, dim_pair, bias=False),
+            nn.LayerNorm(dim_pair)
         )
 
         self.transitions = nn.ModuleList([
             nn.Sequential(
-                nn.LayerNorm(dim_pairwise),
-                Transition(dim=dim_pairwise, expansion_factor=transition_expansion_factor)
+                nn.LayerNorm(dim_pair),
+                Transition(dim_pair, expansion_factor=transition_expansion_factor)
             )
             for _ in range(num_transitions)
         ])
 
     def forward(self, pairwise_trunk, pairwise_rel_pos_feats):
         pairwise_repr = torch.cat((pairwise_trunk, pairwise_rel_pos_feats), dim=-1)
-        pairwise_repr = self.dim_pairwise_init_proj(pairwise_repr)
+        pairwise_repr = self.dim_pair_init_proj(pairwise_repr)
 
         for transition in self.transitions:
             pairwise_repr = transition(pairwise_repr) + pairwise_repr
@@ -966,7 +1000,7 @@ class SingleConditioning(nn.Module):
         self.transitions = nn.ModuleList([
             nn.Sequential(
                 nn.LayerNorm(dim_single),
-                Transition(dim=dim_single, expansion_factor=transition_expansion_factor)
+                Transition(dim_single, expansion_factor=transition_expansion_factor)
             )
             for _ in range(num_transitions)
         ])
@@ -1010,7 +1044,7 @@ class DiffusionTransformer(nn.Module):
         heads,
         dim=384,
         dim_single_cond=None,
-        dim_pairwise=128,
+        dim_pair=128,
         attn_window_size=None,
         attn_pair_bias_kwargs=None
     ):
@@ -1024,12 +1058,12 @@ class DiffusionTransformer(nn.Module):
         for _ in range(depth):
             pair_bias_attn = AttentionPairBias(
                 dim=dim,
-                dim_pairwise=dim_pairwise,
+                dim_pair=dim_pair,
                 heads=heads,
                 window_size=attn_window_size,
                 **attn_pair_bias_kwargs
             )
-            transition = Transition(dim=dim)
+            transition = Transition(dim)
             conditionable_pair_bias = ConditionWrapper(
                 pair_bias_attn,
                 dim=dim,
@@ -1060,16 +1094,16 @@ class DiffusionTransformer(nn.Module):
 
 # Algorithm 24
 class AttentionPairBias(nn.Module):
-    def __init__(self, heads, dim_pairwise, window_size=None, **attn_kwargs):
+    def __init__(self, heads, dim_pair, window_size=None, **attn_kwargs):
         super().__init__()
 
         self.attn = Attention(heads=heads, window_size=window_size, **attn_kwargs)
 
-        to_attn_bias_linear = nn.Linear(dim_pairwise, heads, bias=False)
+        to_attn_bias_linear = nn.Linear(dim_pair, heads, bias=False)
         nn.init.zeros_(to_attn_bias_linear.weight)
 
         self.to_attn_bias = nn.Sequential(
-            nn.LayerNorm(dim_pairwise),
+            nn.LayerNorm(dim_pair),
             to_attn_bias_linear,
             Rearrange('... i j h -> ... h i j')
         )
@@ -1158,34 +1192,64 @@ def computeAlignmentError(x, x_true, phi, phi_true, eps=1e-8):
 
 
 # Algorithm 31
-# just an outline currently
 class ConfidenceHead(nn.Module):
-    pass
-"""
-    def __init__(self):
+    def __init__(self, config, pairformer_kwargs=None):
         super().__init__()
-        self.lin1 = LinearNoBias()
-        self.lin2 = LinearNoBias()
-        self.lin3 = LinearNoBias()
-        self.lin4 = LinearNoBias()
-        self.lin5 = LinearNoBias()
-        self.lin6 = LinearNoBias()
-        self.lin7 = LinearNoBias()
-        self.pairformer = PairformerStack(depth=4)
+        if pairformer_kwargs is None:
+            pairformer_kwargs = {}
+        dim_pair = config.dim_pair
+        dim_single = config.dim_single
+            
+        self.register_buffer('atompair_dist_bins', config.atompair_dist_bins)
+        num_dist_bins = config.atompair_dist_bins.shape[-1]
+        self.num_dist_bins = num_dist_bins
 
-    def forward(self, s_inputs, s, z, x_pred):
-        z += self.lin1(s_inputs) + self.lin2(s_inputs)
-        # Embed pair distances of representative atoms
-        d = 
-        z += self.lin3(one_hot(d, v_bins))
-        s, z += self.pairformer(s, z)
-        p_pae = F.softmax(self.lin4(z))
-        p_pde = F.softmax(self.lin5(z_ij + z_ji))
-        p_plddt = F.softmax(self.lin6(s))
-        p_resolved = F.softmax(self.lin7(s))
-        return p_plddt, p_pae, p_pde, p_resolved
-    
-"""
+        self.dist_bin_pairwise_embed = nn.Embedding(num_dist_bins, dim_pair)
+        self.single_inputs_to_pairwise = LinearNoBias(config.dim_single_inputs, dim_pair * 2)
+
+        self.pairformer_stack = PairformerStack(
+            dim_single=dim_single,
+            dim_pair=dim_pair,
+            depth=config.confidence_depth,
+            **pairformer_kwargs
+        )
+
+        self.to_pae_logits = LinearNoBias(dim_pair, config.num_pae_bins)
+        self.to_pde_logits = LinearNoBias(dim_pair, config.num_pde_bins)
+        self.to_plddt_logits = LinearNoBias(dim_single, config.num_plddt_bins)
+        self.to_resolved_logits = LinearNoBias(dim_single, 2)
+
+    def forward(
+        self,
+        single_inputs_repr,
+        single_repr,
+        pairwise_repr,
+        pred_atom_pos,
+        mask=None
+    ):
+        single_to_pairwise_i, single_to_pairwise_j = self.single_inputs_to_pairwise(single_inputs_repr).chunk(2, dim=-1)
+        pairwise_repr = pairwise_repr + single_to_pairwise_i.unsqueeze(2) + single_to_pairwise_j.unsqueeze(1)
+
+        interatom_dist = torch.cdist(pred_atom_pos, pred_atom_pos, p=2)
+
+        dist_bin_indices = (interatom_dist[..., None] - self.atompair_dist_bins).abs().argmin(dim=-1)
+        pairwise_repr = pairwise_repr + self.dist_bin_pairwise_embed(dist_bin_indices)
+
+        single_repr, pairwise_repr = self.pairformer_stack(
+            single_repr=single_repr,
+            pairwise_repr=pairwise_repr,
+            mask=mask
+        )
+
+        pae_logits = self.to_pae_logits(pairwise_repr)
+
+        symmetric_pairwise_repr = pairwise_repr + pairwise_repr.transpose(1, 2)
+        pde_logits = self.to_pde_logits(symmetric_pairwise_repr)
+
+        plddt_logits = self.to_plddt_logits(single_repr)
+        resolved_logits = self.to_resolved_logits(single_repr)
+
+        return pae_logits, pde_logits, plddt_logits, resolved_logits
 
 
 
