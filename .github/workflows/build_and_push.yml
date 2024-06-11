@@ -1,9 +1,11 @@
 ---
-  name: Image push test
-  run-name: ${{ github.actor }} is testing out building/pushing an image
-  
-  on: [push]
-  
+  name: Push AlphaFold3 image to GitHub Registry
+  run-name: Pushing image after ${{ github.actor }}'s latest push
+
+  on:
+    push:
+      branches:
+        - main
   
   jobs:
     build:
