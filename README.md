@@ -248,3 +248,92 @@ Smaller, start here
 
 - [Thinking in Systems](https://www.chelseagreen.com/product/thinking-in-systems/)
 
+
+## Citations
+
+```bibtex
+@article{Abramson2024-fj,
+  title    = "Accurate structure prediction of biomolecular interactions with
+              {AlphaFold} 3",
+  author   = "Abramson, Josh and Adler, Jonas and Dunger, Jack and Evans,
+              Richard and Green, Tim and Pritzel, Alexander and Ronneberger,
+              Olaf and Willmore, Lindsay and Ballard, Andrew J and Bambrick,
+              Joshua and Bodenstein, Sebastian W and Evans, David A and Hung,
+              Chia-Chun and O'Neill, Michael and Reiman, David and
+              Tunyasuvunakool, Kathryn and Wu, Zachary and {\v Z}emgulyt{\.e},
+              Akvil{\.e} and Arvaniti, Eirini and Beattie, Charles and
+              Bertolli, Ottavia and Bridgland, Alex and Cherepanov, Alexey and
+              Congreve, Miles and Cowen-Rivers, Alexander I and Cowie, Andrew
+              and Figurnov, Michael and Fuchs, Fabian B and Gladman, Hannah and
+              Jain, Rishub and Khan, Yousuf A and Low, Caroline M R and Perlin,
+              Kuba and Potapenko, Anna and Savy, Pascal and Singh, Sukhdeep and
+              Stecula, Adrian and Thillaisundaram, Ashok and Tong, Catherine
+              and Yakneen, Sergei and Zhong, Ellen D and Zielinski, Michal and
+              {\v Z}{\'\i}dek, Augustin and Bapst, Victor and Kohli, Pushmeet
+              and Jaderberg, Max and Hassabis, Demis and Jumper, John M",
+  journal  = "Nature",
+  month    = "May",
+  year     =  2024
+}
+```
+
+```bibtex
+@inproceedings{Darcet2023VisionTN,
+    title   = {Vision Transformers Need Registers},
+    author  = {Timoth'ee Darcet and Maxime Oquab and Julien Mairal and Piotr Bojanowski},
+    year    = {2023},
+    url     = {https://api.semanticscholar.org/CorpusID:263134283}
+}
+```
+
+```bibtex
+@article{Arora2024SimpleLA,
+    title   = {Simple linear attention language models balance the recall-throughput tradeoff},
+    author  = {Simran Arora and Sabri Eyuboglu and Michael Zhang and Aman Timalsina and Silas Alberti and Dylan Zinsley and James Zou and Atri Rudra and Christopher R'e},
+    journal = {ArXiv},
+    year    = {2024},
+    volume  = {abs/2402.18668},
+    url     = {https://api.semanticscholar.org/CorpusID:268063190}
+}
+```
+
+```bibtex
+@article{Puny2021FrameAF,
+    title   = {Frame Averaging for Invariant and Equivariant Network Design},
+    author  = {Omri Puny and Matan Atzmon and Heli Ben-Hamu and Edward James Smith and Ishan Misra and Aditya Grover and Yaron Lipman},
+    journal = {ArXiv},
+    year    = {2021},
+    volume  = {abs/2110.03336},
+    url     = {https://api.semanticscholar.org/CorpusID:238419638}
+}
+```
+
+```bibtex
+@article{Duval2023FAENetFA,
+    title   = {FAENet: Frame Averaging Equivariant GNN for Materials Modeling},
+    author  = {Alexandre Duval and Victor Schmidt and Alex Hernandez Garcia and Santiago Miret and Fragkiskos D. Malliaros and Yoshua Bengio and David Rolnick},
+    journal = {ArXiv},
+    year    = {2023},
+    volume  = {abs/2305.05577},
+    url     = {https://api.semanticscholar.org/CorpusID:258564608}
+}
+```
+
+```bibtex
+@article{Wang2022DeepNetST,
+    title   = {DeepNet: Scaling Transformers to 1, 000 Layers},
+    author  = {Hongyu Wang and Shuming Ma and Li Dong and Shaohan Huang and Dongdong Zhang and Furu Wei},
+    journal = {ArXiv},
+    year    = {2022},
+    volume  = {abs/2203.00555},
+    url     = {https://api.semanticscholar.org/CorpusID:247187905}
+}
+```
+
+```bibtex
+@inproceedings{Ainslie2023CoLT5FL,
+    title   = {CoLT5: Faster Long-Range Transformers with Conditional Computation},
+    author  = {Joshua Ainslie and Tao Lei and Michiel de Jong and Santiago Ontan'on and Siddhartha Brahma and Yury Zemlyanskiy and David Uthus and Mandy Guo and James Lee-Thorp and Yi Tay and Yun-Hsuan Sung and Sumit Sanghai},
+    year    = {2023}
+}
+```
