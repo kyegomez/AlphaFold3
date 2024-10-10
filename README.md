@@ -120,7 +120,7 @@ docker run  --gpus all -it af3
               {\v Z}{\'\i}dek, Augustin and Bapst, Victor and Kohli, Pushmeet
               and Jaderberg, Max and Hassabis, Demis and Jumper, John M",
   journal  = "Nature",
-  month    =  may,
+  month    =  "May",
   year     =  2024
 }
 ```
