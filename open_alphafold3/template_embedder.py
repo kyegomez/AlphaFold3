@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from alphafold3.pairformer import PairFormer
+from open_alphafold3.pairformer import PairFormer
 
 
 class TemplateEmbedder(nn.Module):

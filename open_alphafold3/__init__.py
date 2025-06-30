@@ -1,8 +1,8 @@
-from alphafold3.diffusion import (
+from open_alphafold3.diffusion import (
     GeneticDiffusionModuleBlock,
     GeneticDiffusion,
 )
-from alphafold3.model import AlphaFold3
+from open_alphafold3.model import AlphaFold3
 
 
 __all__ = [

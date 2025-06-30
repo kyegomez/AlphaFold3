@@ -1,5 +1,5 @@
 import torch
-from alphafold3.diffusion import GeneticDiffusion
+from open_alphafold3.diffusion import GeneticDiffusion
 
 # Create an instance of the GeneticDiffusionModuleBlock
 model = GeneticDiffusion(channels=3, training=True)

@@ -1,5 +1,5 @@
 import torch
-from alphafold3 import AlphaFold3
+from open_alphafold3 import AlphaFold3
 
 # Create random tensors
 x = torch.randn(

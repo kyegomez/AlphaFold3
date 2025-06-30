@@ -1,7 +1,7 @@
 from torch import Tensor, nn
 
-from alphafold3.diffusion import GeneticDiffusion
-from alphafold3.pairformer import PairFormer
+from open_alphafold3.diffusion import GeneticDiffusion
+from open_alphafold3.pairformer import PairFormer
 from einops import rearrange
 
 # structure module
