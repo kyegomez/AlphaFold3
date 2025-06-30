@@ -1,7 +1,6 @@
-[![Multi-Modality](agorabanner.png)](https://discord.gg/qUtxnK2NMf)
+# Open-AlphaFold
 
-# AlphaFold3
-Implementation of Alpha Fold 3 from the paper: "Accurate structure prediction of biomolecular interactions with AlphaFold3" in PyTorch
+Open source Implementation of Alpha Fold 3 from the paper: "Accurate structure prediction of biomolecular interactions with AlphaFold3" in PyTorch
 
 
 ## install
@@ -85,44 +84,6 @@ output = model(x, y)
 
 # Print the shape of the output tensor
 print(output.shape)
-```
-
-# Docker
-A basic PyTorch image is provided that includes the dependencies to run this code.
-
-```bash
-## Build the image
-docker build -t af3 .
-
-## Run the image (with GPUs)
-docker run  --gpus all -it af3
-```
-
-# Citation
-```bibtex
-@article{Abramson2024-fj,
-  title    = "Accurate structure prediction of biomolecular interactions with
-              {AlphaFold} 3",
-  author   = "Abramson, Josh and Adler, Jonas and Dunger, Jack and Evans,
-              Richard and Green, Tim and Pritzel, Alexander and Ronneberger,
-              Olaf and Willmore, Lindsay and Ballard, Andrew J and Bambrick,
-              Joshua and Bodenstein, Sebastian W and Evans, David A and Hung,
-              Chia-Chun and O'Neill, Michael and Reiman, David and
-              Tunyasuvunakool, Kathryn and Wu, Zachary and {\v Z}emgulyt{\.e},
-              Akvil{\.e} and Arvaniti, Eirini and Beattie, Charles and
-              Bertolli, Ottavia and Bridgland, Alex and Cherepanov, Alexey and
-              Congreve, Miles and Cowen-Rivers, Alexander I and Cowie, Andrew
-              and Figurnov, Michael and Fuchs, Fabian B and Gladman, Hannah and
-              Jain, Rishub and Khan, Yousuf A and Low, Caroline M R and Perlin,
-              Kuba and Potapenko, Anna and Savy, Pascal and Singh, Sukhdeep and
-              Stecula, Adrian and Thillaisundaram, Ashok and Tong, Catherine
-              and Yakneen, Sergei and Zhong, Ellen D and Zielinski, Michal and
-              {\v Z}{\'\i}dek, Augustin and Bapst, Victor and Kohli, Pushmeet
-              and Jaderberg, Max and Hassabis, Demis and Jumper, John M",
-  journal  = "Nature",
-  month    =  "May",
-  year     =  2024
-}
 ```
 
 
@@ -219,36 +180,6 @@ implementation [LINK](https://github.com/aqlaboratory/openfold)
 
 - [OpenFold](https://github.com/aqlaboratory/openfold)
 
-
-## Datasets
-Smaller, start here
-- [Protein data bank](https://www.rcsb.org/)
-- [Working with pdb data](https://pdb101.rcsb.org/learn/guide-to-understanding-pdb-data/dealing-with-coordinates)
-- [PDB ligands](https://huggingface.co/datasets/jglaser/pdb_protein_ligand_complexes)
-- [AlphaFold Protein Structure Database](https://alphafold.ebi.ac.uk/)
-- [Colab notebook for AlphaFold search](https://colab.research.google.com/github/deepmind/alphafold/blob/main/notebooks/AlphaFold.ipynb)
-
-## Benchmarks
-
-- [RoseTTAFold](https://www.biorxiv.org/content/10.1101/2021.08.15.456425v1)(https://www.ipd.uw.edu/2021/07/rosettafold-accurate-protein-structure-prediction-accessible-to-all/0)
-
-## Related Projects
-
-- [NeuroFold](https://www.biorxiv.org/content/10.1101/2024.03.12.584504v1)
-
-## Tools
-
-- [PyMol](https://pymol.org/)
-- [ChimeraX](https://www.cgl.ucsf.edu/chimerax/download.html)
-
-## Community
-
-- [Agora](https://discord.gg/BAThAeeg)
-## Books 
-
-- [Thinking in Systems](https://www.chelseagreen.com/product/thinking-in-systems/)
-
-
 ## Citations
 
 ```bibtex
@@ -337,3 +268,32 @@ Smaller, start here
     year    = {2023}
 }
 ```
+
+# Citation
+```bibtex
+@article{Abramson2024-fj,
+  title    = "Accurate structure prediction of biomolecular interactions with
+              {AlphaFold} 3",
+  author   = "Abramson, Josh and Adler, Jonas and Dunger, Jack and Evans,
+              Richard and Green, Tim and Pritzel, Alexander and Ronneberger,
+              Olaf and Willmore, Lindsay and Ballard, Andrew J and Bambrick,
+              Joshua and Bodenstein, Sebastian W and Evans, David A and Hung,
+              Chia-Chun and O'Neill, Michael and Reiman, David and
+              Tunyasuvunakool, Kathryn and Wu, Zachary and {\v Z}emgulyt{\.e},
+              Akvil{\.e} and Arvaniti, Eirini and Beattie, Charles and
+              Bertolli, Ottavia and Bridgland, Alex and Cherepanov, Alexey and
+              Congreve, Miles and Cowen-Rivers, Alexander I and Cowie, Andrew
+              and Figurnov, Michael and Fuchs, Fabian B and Gladman, Hannah and
+              Jain, Rishub and Khan, Yousuf A and Low, Caroline M R and Perlin,
+              Kuba and Potapenko, Anna and Savy, Pascal and Singh, Sukhdeep and
+              Stecula, Adrian and Thillaisundaram, Ashok and Tong, Catherine
+              and Yakneen, Sergei and Zhong, Ellen D and Zielinski, Michal and
+              {\v Z}{\'\i}dek, Augustin and Bapst, Victor and Kohli, Pushmeet
+              and Jaderberg, Max and Hassabis, Demis and Jumper, John M",
+  journal  = "Nature",
+  month    =  "May",
+  year     =  2024
+}
+```
+
+
